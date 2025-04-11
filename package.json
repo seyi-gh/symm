@@ -1,0 +1,18 @@
+{
+  "name": "symm.code",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "app.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "typescript": "^5.8.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0"
+  }
+}
