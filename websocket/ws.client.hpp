@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../util/thread_queue.h"
+
 #include <string>
 #include <vector>
 #include <cstdint>
@@ -16,12 +18,9 @@ public:
   ~WebSocketClient();
 
   bool connect();
-
   bool send(const std::vector<uint8_t>& data);
   bool send(const std::vector<uint8_t>& data, bool force);
-
   bool receive(std::vector<uint8_t>& data);
-
   bool is_connected() const;
 
 private:

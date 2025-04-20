@@ -2,7 +2,10 @@ CXX = g++
 CXXFLASGS = -Wall -std=c++17
 LDFLAGS = -lssl -lcrypto -pthread
 
-SRC = main.cpp websocket/ws.client.cpp
+SRC = main.cpp \
+			conn/c.handler.cpp \
+			websocket/ws.client.cpp
+
 OBJ = ${SRC:.cpp=.o}
 
 BIN = proxy
