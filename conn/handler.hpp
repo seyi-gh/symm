@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../websocket/ws.client.hpp"
+#include "../websocket/client.hpp"
 #include "../util/thread_queue.h"
 
 #include <string>

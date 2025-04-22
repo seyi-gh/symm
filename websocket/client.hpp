@@ -5,6 +5,10 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <thread>
+#include <unordered_map>
+#include <mutex>
+#include <netinet/in.h>
 
 class wsutils {
 public:
@@ -19,7 +23,6 @@ public:
 
   bool connect();
   bool send(const std::vector<uint8_t>& data);
-  bool send(const std::vector<uint8_t>& data, bool force);
   bool receive(std::vector<uint8_t>& data);
   bool is_connected() const;
 

@@ -3,16 +3,17 @@ CXXFLASGS = -Wall -std=c++17
 LDFLAGS = -lssl -lcrypto -pthread
 
 SRC = main.cpp \
-			conn/c.handler.cpp \
-			websocket/ws.client.cpp
+			conn/handler.cpp \
+			websocket/client.cpp \
+			websocket/server.cpp \
 
 OBJ = ${SRC:.cpp=.o}
 
-BIN = proxy
+BIN = symm
 
 all: ${BIN}
 
 ${BIN}: ${OBJ}
 	${CXX} -o $@ $^ ${LDFLAGS}
 
-clean: rm -f ${BIN} ${OBJ}
+# clean: rm -f ${BIN} ${OBJ}

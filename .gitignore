@@ -1,3 +1,6 @@
 .vscode
 test.suite/node_modules
 test.suite/package-lock.json
+
+*/.o
+symm

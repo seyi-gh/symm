@@ -1,4 +1,4 @@
-#include "c.handler.hpp"
+#include "handler.hpp"
 #include "../util/pck.h"
 
 #include <iostream>
@@ -90,8 +90,7 @@ void ApiHandler::forward_to_ws(const std::string& request, int client_socket) {
     // Send an HTTP 500 response to the user
     pck error_packet(500);
     error_packet.set_content("Internal Server Error");
-    error_packet.add_con_cls();
-    std::string error_response = error_packet.export_(true);
+    std::string error_response = error_packet.export_();
     send_response_to_user(error_response, client_socket);
   }
 }

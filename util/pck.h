@@ -2,71 +2,110 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
 
 class pck {
+protected:
+  const std::string bl = "\r\n";
+  virtual std::string format_status(short int status_code) const {
+    return "HTTP/1.1 " + std::to_string(status_code) + " Unknown\r\n";
+}
+  std::string format(std::string id, std::string value) const {
+    return id + ": " + value + bl;
+  }
+
 public:
-  std::string bl;
+  std::string status_line;
   std::string content_type;
+  std::string content_data;
+  std::vector<std::string> headers;
 
-  std::string status;
-  std::string content;
-  std::string headers;
-  std::string body;
-  std::string response;
-  std::string cont_len;
-
-  // std::bad_alloc
-
-  //! this dont work
-
-  pck(int status = 200) {
-    std::cout << "[pck] Creating packet with status: " << status << std::endl;
-    this->content_type = "Content-Type: text/plain\r\n";
-    this->bl = "\r\n";
-    this->status = "HTTP/1.1 " + std::to_string(status) + " OK" + bl;
-    this->headers = content_type;
-    this->content = "";
-    this->response = "";
-    this->cont_len = "";
+  pck(short int status_code=-1) {
+    if (status_code != -1) set_status(status_code);
   }
-
-  void set_status(int status) {
-    this->status = "HTTP/1.1 " + std::to_string(status) + " OK" + bl;
-  }
+  virtual ~pck() = default;
 
   void add_header(std::string header) {
-    headers += header + bl;
+    headers.push_back(header + bl);
+  }
+  void add_header(std::string header, std::string value) {
+    headers.push_back(format(header, value));
   }
 
-  void set_content(std::string content) {
-    this->content = content;
+  void set_content(std::string content_data) {
+    this->content_data = content_data;
   }
 
-  void add_con_cls() {
-    headers += "Connection: close" + bl;
+  void set_status(short int status_code) {
+    status_line = format_status(status_code);
+  }
+  void set_status(std::string status) {
+    status_line = status + bl;
   }
 
-  void set_cont_len() {
-    cont_len = std::to_string(this->content.length());
-  }
-  void add_header_cont_len() {
-    if (this->content.length() == 0) return;
-    set_cont_len();
-    headers += "Content-Length: " + cont_len + bl;
+  std::string export_headers() {
+    std::string headers_str;
+
+    for (const auto& header : headers) {
+      headers_str += header;
+    }
+    return headers_str;
   }
 
-  std::string export_(bool add_cl = false) {
-    std::cout << "[pck] Exporting packet1" << std::endl;
-    std::cout << "[pck] Content: " << content << std::endl;
-    if (add_cl) add_header_cont_len();
-    //response = status + headers + bl + content; // Export response
-    response = 
-      "HTTP/1.1 200 OK\r\n"
-      "Connection: close\r\n"
-      "Content-Type: text/plain; charset=utf-8\r\n"
-      "\r\n"
-      "Hello World!123";
-
+  std::string export_() {
+    std::string response = status_line + content_type + export_headers() + bl;
+    std::cout << "Response: " << response << std::endl;
+    if (!content_data.empty())
+      response += content_data + bl;
     return response;
+  }
+};
+
+
+class ws_pck : public pck {
+public:
+  ws_pck(short int status_code=-1) : pck(status_code) {
+    if (status_code != -1) set_status(status_code);
+  }
+
+  std::string format_status(short int status_code) const {
+    if (status_code == 101)
+      return "HTTP/1.1 101 Switching Protocols\r\n";
+    else if (status_code == 400)
+      return "HTTP/1.1 400 Bad Request\r\n";
+    else if (status_code == 401)
+      return "HTTP/1.1 401 Unauthorized\r\n";
+    else if (status_code == 403)
+      return "HTTP/1.1 403 Forbidden\r\n";
+    else if (status_code == 405)
+      return "HTTP/1.1 405 Method Not Allowed\r\n";
+    else if (status_code == 426)
+      return "HTTP/1.1 426 Upgrade Required\r\n";
+    else if (status_code == 503)
+      return "HTTP/1.1 503 Service Unavailable\r\n";
+    return "HTTP/1.1 500 Internal Server Error\r\n";
+  }
+};
+
+class http_pck : public pck {
+public:
+  http_pck(short int status_code=-1) : pck(status_code) {
+    if (status_code != -1) set_status(status_code);
+  }
+
+  std::string format_status(short int status_code) const override {
+    if (status_code == 200)
+      return "HTTP/1.1 200 OK\r\n";
+    else if (status_code == 400)
+      return "HTTP/1.1 400 Bad Request\r\n";
+    else if (status_code == 401)
+      return "HTTP/1.1 401 Unauthorized\r\n";
+    else if (status_code == 403)
+      return "HTTP/1.1 403 Forbidden\r\n";
+    else if (status_code == 404)
+      return "HTTP/1.1 404 Not Found\r\n";
+    else if (status_code == 500)
+      return "HTTP/1.1 500 Internal Server Error\r\n";
+    return "HTTP/1.1 500 Internal Server Error\r\n";
   }
 };

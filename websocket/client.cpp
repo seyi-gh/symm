@@ -1,4 +1,4 @@
-#include "ws.client.hpp"
+#include "client.hpp"
 
 #include <iostream>
 #include <sstream>
@@ -12,6 +12,7 @@
 #include <openssl/buffer.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
+#include <arpa/inet.h>
 
 std::string wsutils::generate_sec_ws_key() {
   unsigned char random_bytes[16];
@@ -29,15 +30,6 @@ std::string wsutils::generate_sec_ws_key() {
 
   BIO_free_all(bio);
   return key;
-}
-
-std::ostringstream wsutils::generate_headers(const std::vector<std::string> headers) {
-  std::ostringstream oss;
-  for (const auto& header : headers) {
-    oss << header << "\r\n";
-  }
-  oss << "\r\n";
-  return oss;
 }
 
 WebSocketClient::WebSocketClient(const std::string& host, int port)
@@ -159,8 +151,8 @@ bool WebSocketClient::perform_handshake() {
   return true;
 }
 
-bool WebSocketClient::send(const std::vector<uint8_t>& data, bool force) {
-  if (!connected_ && !force) {
+bool WebSocketClient::send(const std::vector<uint8_t>& data) {
+  if (!connected_) {
     std::cerr << "[send] Not connected to server" << std::endl;
     return false;
   }
@@ -217,9 +209,6 @@ bool WebSocketClient::send(const std::vector<uint8_t>& data, bool force) {
   return true;
 }
 
-bool WebSocketClient::send(const std::vector<uint8_t>& data) {
-  return send(data, false); // Call the overloaded method with force set to false
-}
 
 bool WebSocketClient::receive(std::vector<uint8_t>& data) {
   uint8_t header[2];

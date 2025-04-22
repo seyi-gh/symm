@@ -1,19 +1,28 @@
-// create a simple ws with basic debug console.logs, in port 5000
 const WebSocket = require('ws');
-const wss = new WebSocket.Server({ port: 5000 });
 
-wss.on('connection', function connection(ws) {
-  console.log('Client connected');
-  ws.on('message', function incoming(message) {
-    console.log('received: %s', message);
-    try {
-      ws.send('Hello world!');
-      console.log('sent: echo: %s', message);
-    } catch (err) {
-      console.error('Error sending message:', err);
-    }
-  });
-  ws.on('close', function close() {
-    console.log('Client disconnected');
-  });
+// Connect to the WebSocket server
+const ws = new WebSocket('ws://localhost:9000');
+
+// When the connection is open, send a message
+ws.on('open', function open() {
+  console.log('[Test] Connected to WebSocket server');
+  ws.send('Hello, WebSocket!');
+});
+
+// When a message is received, log it to the console
+ws.on('message', function incoming(data) {
+  console.log('[Test] Received message from server:', data);
+
+  // Close the connection after receiving the message
+  ws.close();
+});
+
+// Handle errors
+ws.on('error', function error(err) {
+  console.error('[Test] WebSocket error:', err);
+});
+
+// Handle connection close
+ws.on('close', function close() {
+  console.log('[Test] Connection closed');
 });
