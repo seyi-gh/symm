@@ -4,13 +4,18 @@
 #include <string>
 #include <vector>
 
+/*
+Packet string formated as HTTP response
+- Helper for exporting HTTP responses
+- Break line added
+*/
 class pck {
 protected:
   const std::string bl = "\r\n";
   virtual std::string format_status(short int status_code) const {
     return "HTTP/1.1 " + std::to_string(status_code) + " Unknown\r\n";
-}
-  std::string format(std::string id, std::string value) const {
+  }
+  std::string header_format(std::string id, std::string value) const {
     return id + ": " + value + bl;
   }
 
@@ -20,41 +25,42 @@ public:
   std::string content_data;
   std::vector<std::string> headers;
 
-  pck(short int status_code=-1) {
+  pck(short int status_code=-1)
+    :status_line(""), content_type(""), content_data("") {
     if (status_code != -1) set_status(status_code);
   }
   virtual ~pck() = default;
 
+  // Break line added
   void add_header(std::string header) {
     headers.push_back(header + bl);
   }
+  // Break line added
   void add_header(std::string header, std::string value) {
-    headers.push_back(format(header, value));
+    headers.push_back(header_format(header, value));
   }
-
-  void set_content(std::string content_data) {
-    this->content_data = content_data;
+  // Break line added
+  void set_content(std::string header = "Content-Type", std::string value = "text/html") {
+    content_type = header_format(header, value);
   }
 
   void set_status(short int status_code) {
     status_line = format_status(status_code);
   }
+  // Break line added
   void set_status(std::string status) {
     status_line = status + bl;
   }
 
   std::string export_headers() {
     std::string headers_str;
-
-    for (const auto& header : headers) {
+    for (const auto& header : headers)
       headers_str += header;
-    }
     return headers_str;
   }
 
-  std::string export_() {
+  std::string export_packet() {
     std::string response = status_line + content_type + export_headers() + bl;
-    std::cout << "Response: " << response << std::endl;
     if (!content_data.empty())
       response += content_data + bl;
     return response;
@@ -64,7 +70,8 @@ public:
 
 class ws_pck : public pck {
 public:
-  ws_pck(short int status_code=-1) : pck(status_code) {
+  ws_pck(short int status_code=-1)
+    :pck(status_code) {
     if (status_code != -1) set_status(status_code);
   }
 
@@ -89,7 +96,8 @@ public:
 
 class http_pck : public pck {
 public:
-  http_pck(short int status_code=-1) : pck(status_code) {
+  http_pck(short int status_code=-1)
+    :pck(status_code) {
     if (status_code != -1) set_status(status_code);
   }
 

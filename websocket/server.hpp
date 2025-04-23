@@ -1,9 +1,11 @@
 #pragma once
 
+#include <vector>
 #include <string>
 #include <unordered_map>
 #include <mutex>
 #include <sys/epoll.h>
+#include "../util/logger.h"
 
 class WebSocketServer {
 public:
@@ -11,20 +13,24 @@ public:
   ~WebSocketServer();
 
   void run();
+  void stop();
 
 private:
-  std::string _deb(const std::string& msg, const std::string& func) const;
-
   int port_;
   int server_fd_;
   int epoll_fd_;
-  std::unordered_map<int, std::string> client_buffers_; // Buffers for partial reads
+  // Partial buffer for client handler
+  std::unordered_map<int, std::string> client_buffers_;
+  // Epoll event structure
   std::mutex client_mutex_;
+  logger log;
+  bool running_;
 
-  bool setup_server_socket();
-  void handle_events();
+  bool perform_handshake(int client_socket);
+  bool decode_frame(const char* buffer, long len, std::string& message);
   void handle_client_read(int client_socket);
   void handle_client_write(int client_socket, const std::string& message);
-  bool perform_handshake(int client_socket);
-  bool decode_frame(const char* buffer, ssize_t len, std::string& message);
+  void broadcast_message(const std::vector<uint8_t>& frame, const std::vector<int>& client_sockets);
+  bool setup_server_socket();
+  void handle_events();
 };

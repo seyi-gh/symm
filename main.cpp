@@ -61,7 +61,7 @@ void test_websocket_server() {
     return;
   }
   buffer[recv_len] = '\0'; // Null-terminate the response
-  std::cout << "[Test] Handshake response:\n" << buffer << std::endl;
+  std::cout << "[Test] Handshake response passed" << std::endl;
 
   // Validate handshake response
   if (std::string(buffer).find("HTTP/1.1 101 Switching Protocols") == std::string::npos) {

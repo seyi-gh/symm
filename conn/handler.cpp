@@ -74,7 +74,7 @@ void ApiHandler::forward_to_ws(const std::string& request, int client_socket) {
     // Export the HTTP response
     std::string http_response;
     try {
-      http_response = response_packet->export_();
+      http_response = response_packet->export_packet();
       //! TODO: Invalid response
     } catch (const std::exception& e) {
       std::cerr << "[ApiHandler] Exception while exporting HTTP response: " << e.what() << std::endl;
@@ -90,7 +90,7 @@ void ApiHandler::forward_to_ws(const std::string& request, int client_socket) {
     // Send an HTTP 500 response to the user
     pck error_packet(500);
     error_packet.set_content("Internal Server Error");
-    std::string error_response = error_packet.export_();
+    std::string error_response = error_packet.export_packet();
     send_response_to_user(error_response, client_socket);
   }
 }
