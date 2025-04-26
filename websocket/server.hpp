@@ -23,7 +23,6 @@ private:
   std::unordered_map<int, std::string> client_buffers_;
   // Epoll event structure
   std::mutex client_mutex_;
-  logger log;
   bool running_;
 
   bool perform_handshake(int client_socket);

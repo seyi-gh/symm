@@ -1,6 +1,7 @@
 .vscode
+logs/*.txt
 test.suite/node_modules
 test.suite/package-lock.json
-
 *.o
+main.o
 symm

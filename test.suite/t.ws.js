@@ -14,7 +14,6 @@ ws.on('message', function incoming(data) {
   console.log('[Test] Received message from server:', data);
 
   // Close the connection after receiving the message
-  ws.close();
 });
 
 // Handle errors
