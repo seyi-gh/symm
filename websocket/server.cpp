@@ -19,6 +19,7 @@
 #include <openssl/evp.h>
 #include <thread>
 #include <algorithm>
+#include <iomanip>
 
 // WebSocket frame constants
 constexpr uint8_t WS_FIN_TEXT_FRAME = 0x81; // FIN + text frame (opcode 0x1)
@@ -166,8 +167,8 @@ void WebSocketServer::handle_events() {
 }
 
 void WebSocketServer::handle_client_read(int client_socket) {
-  char buffer[1024];
-  ssize_t len = recv(client_socket, buffer, sizeof(buffer), 0);
+  std::vector<char> buffer(4096); // Use a larger initial buffer
+  ssize_t len = recv(client_socket, buffer.data(), buffer.size(), 0);
   if (len <= 0) {
     if (len < 0) {
       logger::error("Failed to read from client socket: " + std::to_string(client_socket), __func__);
@@ -181,46 +182,16 @@ void WebSocketServer::handle_client_read(int client_socket) {
 
   // Process the message
   std::string message;
-  if (!decode_frame(buffer, len, message)) {
+  if (!decode_frame(buffer.data(), len, message)) {
     epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, client_socket, nullptr);
     close(client_socket);
     return;
   }
 
-  logger::info("Received message from client " + std::to_string(client_socket) + ": " + message, __func__); //!
+  logger::info("Received message from client " + std::to_string(client_socket) + ": " + message, __func__);
 
-  // Prepare WebSocket frame
-  std::vector<uint8_t> frame;
-  frame.push_back(WS_FIN_TEXT_FRAME); // FIN + text frame (opcode 0x1)
-
-  size_t payload_len = message.size();
-  if (payload_len <= 125) {
-    frame.push_back(static_cast<uint8_t>(payload_len)); // No mask bit for server-to-client frames
-  } else if (payload_len <= 65535) {
-    frame.push_back(WS_PAYLOAD_LEN_16); // Extended payload length (16-bit)
-    frame.push_back((payload_len >> 8) & 0xFF);
-    frame.push_back(payload_len & 0xFF);
-  } else {
-    frame.push_back(WS_PAYLOAD_LEN_64); // Extended payload length (64-bit)
-    for (int i = 7; i >= 0; --i) {
-      frame.push_back((payload_len >> (i * 8)) & 0xFF);
-    }
-  }
-
-  // Append the payload
-  frame.insert(frame.end(), message.begin(), message.end());
-
-  // Send the frame
-  size_t total_sent = 0;
-  while (total_sent < frame.size()) {
-    ssize_t sent = send(client_socket, frame.data() + total_sent, frame.size() - total_sent, 0);
-    if (sent < 0) {
-      epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, client_socket, nullptr);
-      close(client_socket);
-      return;
-    }
-    total_sent += sent;
-  }
+  // Echo the message back to the client
+  handle_client_write(client_socket, "pong " + message);
 }
 
 bool WebSocketServer::perform_handshake(int client_socket) {
@@ -253,7 +224,8 @@ bool WebSocketServer::perform_handshake(int client_socket) {
 
   buffer[len] = '\0';
   std::string request(buffer);
-  logger::info("Received handshake request: " + request, __func__);
+  
+  //logger::info("Received handshake request: " + request, __func__); //!
 
   // Extract Sec-WebSocket-Key
   size_t key_pos = request.find("Sec-WebSocket-Key: ");
@@ -291,7 +263,7 @@ bool WebSocketServer::perform_handshake(int client_socket) {
   response << "\r\n";
 
   if (send(client_socket, response.str().c_str(), response.str().size(), 0) <= 0) {
-    perror("[perform_handshake] Failed to send handshake response");
+    logger::error("Failed to send handshake response", __func__);
     return false;
   }
 
@@ -375,5 +347,60 @@ bool WebSocketServer::decode_frame(const char* buffer, long len, std::string& me
     message[i] = buffer[offset + i] ^ mask[i % 4];
   }
 
+  logger::debug("Payload length: " + std::to_string(payload_len), __func__);
+  logger::debug("Masking key: " + std::to_string(mask[0]) + " " +
+                std::to_string(mask[1]) + " " +
+                std::to_string(mask[2]) + " " +
+                std::to_string(mask[3]), __func__);
+
   return true;
+}
+
+void WebSocketServer::handle_client_write(int client_socket, const std::string& message) {
+  // Prepare WebSocket frame
+  std::vector<uint8_t> frame;
+  frame.push_back(WS_FIN_TEXT_FRAME); // FIN + text frame (opcode 0x1)
+
+  size_t payload_len = message.size();
+  if (payload_len <= 125) {
+    frame.push_back(static_cast<uint8_t>(payload_len)); // No mask bit for server-to-client frames
+  } else if (payload_len <= 65535) {
+    frame.push_back(WS_PAYLOAD_LEN_16); // Extended payload length (16-bit)
+    frame.push_back((payload_len >> 8) & 0xFF); // High byte
+    frame.push_back(payload_len & 0xFF);        // Low byte
+  } else {
+    frame.push_back(WS_PAYLOAD_LEN_64); // Extended payload length (64-bit)
+    for (int i = 7; i >= 0; --i) {
+      frame.push_back((payload_len >> (i * 8)) & 0xFF);
+    }
+  }
+
+  // Append the payload (message)
+  frame.insert(frame.end(), message.begin(), message.end());
+
+  // Debug: Log the frame being sent in hexadecimal format
+  std::ostringstream hex_stream;
+  for (uint8_t byte : frame) {
+    hex_stream << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte) << " ";
+  }
+  logger::debug("Sending frame to client " + std::to_string(client_socket) + ": " + hex_stream.str(), __func__);
+
+  // Send the frame
+  size_t total_sent = 0;
+  while (total_sent < frame.size()) {
+    ssize_t sent = send(client_socket, frame.data() + total_sent, frame.size() - total_sent, 0);
+    if (sent < 0) {
+      logger::error("Failed to send message to client " + std::to_string(client_socket) + ": " + strerror(errno), __func__);
+      epoll_ctl(epoll_fd_, EPOLL_CTL_DEL, client_socket, nullptr);
+      close(client_socket);
+      return;
+    }
+    total_sent += sent;
+
+    // Debug: Log the progress of sending
+    logger::debug("Sent " + std::to_string(sent) + " bytes to client " + std::to_string(client_socket), __func__);
+  }
+
+  // Debug: Log completion of message sending
+  logger::debug("Message successfully sent to client " + std::to_string(client_socket), __func__);
 }

@@ -5,3 +5,4 @@ test.suite/package-lock.json
 *.o
 main.o
 symm
+.idea.txt

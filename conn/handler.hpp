@@ -1,27 +1,28 @@
 #pragma once
 
-#include "../websocket/client.hpp"
-#include "../util/thread_queue.h"
-
-#include <string>
 #include <vector>
+#include <string>
+#include <thread>
+#include <mutex>
 #include <unordered_map>
-#include <memory>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <unistd.h>
+#include <poll.h>
 
 class ApiHandler {
 public:
-  ApiHandler(std::vector<int> ports, WebSocketClient& ws);
+  explicit ApiHandler(const std::vector<short int>& ports);
   ~ApiHandler();
 
-  void run();
+  void run(); // Start listening on all ports
+  virtual void process_request(int client_socket); // Process client request and send response
 
 private:
-  std::vector<int> ports;
-  WebSocketClient& ws;
+  std::vector<short int> ports_; // List of ports to listen on
+  std::vector<std::thread> threads_; // Threads for each port
+  std::unordered_map<int, std::vector<pollfd>> poll_fds_; // Poll file descriptors for each port
+  std::mutex poll_mutex_; // Mutex for thread-safe access to poll_fds_
 
-  void handle_client(int client_socket);
-  void start_port(int port);
-
-  void forward_to_ws(const std::string& request, int client_socket);
-  void send_response_to_user(const std::string& response, int client_socket);
+  void start_port(int port); // Start listening on a specific port
 };

@@ -7,7 +7,7 @@
 
 #define outputfunc std::cout
 #define outputfucerr std::cerr
-#define endl std::endl
+#define d_endl std::endl
 #define log_path "./logs/"
 
 class logger {
@@ -30,7 +30,7 @@ public:
     std::strftime(time_buffer, sizeof(time_buffer), "%Y-%m-%d %H:%M:%S", &tm);
     std::ostringstream log_stream;
     log_stream << time_buffer << " [" << log_name << "][" << function_name << "] " << message;
-    outputfunc << log_stream.str() << endl;
+    outputfunc << log_stream.str() << d_endl;
   }
 
   static void debug(

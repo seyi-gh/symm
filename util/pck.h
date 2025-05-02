@@ -51,6 +51,9 @@ public:
   void set_status(std::string status) {
     status_line = status + bl;
   }
+  void set_body(std::string body) {
+    content_data = body;
+  }
 
   std::string export_headers() {
     std::string headers_str;

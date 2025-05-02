@@ -1,17 +1,17 @@
 #!/bin/bash
 PORT=9000
 
-exec 3>&1 4>&2
-exec >/dev/null 2>&1
+#exec 3>&1 4>&2
+#exec >/dev/null 2>&1
 
-set -x
+#set -x
 
 sh ./exec/k.port.sh
 # sh ./exec/k.docker.sh
 rm -r ./*.o ./symm | make
 
-set +x
+#set +x
 
-exec 1>&3 2>&4
+#exec 1>&3 2>&4
 
 ./symm
