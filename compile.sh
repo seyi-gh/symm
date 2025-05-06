@@ -8,7 +8,13 @@ PORT=9000
 
 sh ./exec/k.port.sh
 # sh ./exec/k.docker.sh
-rm -r ./*.o ./symm | make
+rm -r ./*.o ./symm ./*/*.o
+files_found="$(find . -name "*.o")"
+if [ -z "$files_found" ]; then
+  echo "No .c files found in the current directory."
+fi
+
+make
 
 #set +x
 

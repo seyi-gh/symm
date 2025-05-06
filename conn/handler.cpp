@@ -1,5 +1,7 @@
 #include "handler.hpp"
 #include "../util/logger.h"
+#include "../util/pck.h"
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -10,127 +12,96 @@
 #include <arpa/inet.h>
 #include <poll.h>
 
-ApiHandler::ApiHandler(const std::vector<short int>& ports)
-  : ports_(ports) {}
-
-ApiHandler::~ApiHandler() {
-  for (auto& thread : threads_) {
-    if (thread.joinable()) {
-      thread.join();
-    }
-  }
+ApiHandler::ApiHandler(const std::vector<int>& ports) {
+  for (int port : ports)
+    id_ports.push_back(setup_port(port));
 }
 
-void ApiHandler::run() {
-  for (int port : ports_) {
-    threads_.emplace_back(&ApiHandler::start_port, this, port);
-  }
+ApiHandler::~ApiHandler() {}
 
-  // Wait for all threads to finish
-  for (auto& thread : threads_) {
-    if (thread.joinable()) {
-      thread.join();
-    }
-  }
-}
+ApiHandler::self_port::self_port(int p, int fd, struct sockaddr_in addr, int o)
+  : port(p), sfd(fd), addr(addr), opt(o) {}
 
-void ApiHandler::start_port(int port) {
-  int server_fd;
-  struct sockaddr_in address;
-  int opt = 1;
+ApiHandler::self_port ApiHandler::setup_port(int port) {
+  self_port port_id = self_port(port, -1, {}, -1);
 
   // Create socket file descriptor
-  if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
+  if ((port_id.sfd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
     logger::error("Socket creation failed for port " + std::to_string(port), __func__);
-    return;
   }
 
   // Set socket options
-  if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
+  if (setsockopt(port_id.sfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &port_id.opt, sizeof(port_id.opt))) {
     logger::error("Failed to set socket options for port " + std::to_string(port), __func__);
-    close(server_fd);
-    return;
+    close(port_id.sfd);
   }
 
   // Set socket to non-blocking mode
-  if (fcntl(server_fd, F_SETFL, O_NONBLOCK) < 0) {
+  if (fcntl(port_id.sfd, F_SETFL, O_NONBLOCK) < 0) {
     logger::error("Failed to set non-blocking mode for port " + std::to_string(port), __func__);
-    close(server_fd);
-    return;
+    close(port_id.sfd);
   }
 
-  address.sin_family = AF_INET;
-  address.sin_addr.s_addr = INADDR_ANY;
-  address.sin_port = htons(port);
+  port_id.addr.sin_family = AF_INET;
+  port_id.addr.sin_addr.s_addr = INADDR_ANY;
+  port_id.addr.sin_port = htons(port);
 
   // Bind socket to port
-  if (bind(server_fd, (struct sockaddr*)&address, sizeof(address)) < 0) {
+  if (bind(port_id.sfd, (struct sockaddr*)&port_id.addr, sizeof(port_id.addr)) < 0) {
     logger::error("Failed to bind socket to port " + std::to_string(port), __func__);
-    close(server_fd);
+    close(port_id.sfd);
+  }
+
+  return port_id;
+}
+
+void ApiHandler::listen_port(self_port& port_id) {
+  if (listen(port_id.sfd, SOMAXCONN) < 0) {
+    logger::error("Failed to listen on port " + std::to_string(port_id.port), __func__);
+    close(port_id.sfd);
     return;
   }
 
-  // Start listening
-  if (listen(server_fd, SOMAXCONN) < 0) {
-    logger::error("Failed to listen on port " + std::to_string(port), __func__);
-    close(server_fd);
-    return;
-  }
-
-  logger::info("Listening on port " + std::to_string(port), __func__);
-
-  // Polling setup
   std::vector<pollfd> fds;
-  pollfd server_poll_fd = {server_fd, POLLIN, 0};
+  pollfd server_poll_fd = {port_id.sfd, POLLIN, 0};
   fds.push_back(server_poll_fd);
 
   while (true) {
     int poll_count = poll(fds.data(), fds.size(), -1);
     if (poll_count < 0) {
-      logger::error("Poll failed on port " + std::to_string(port), __func__);
+      logger::error("Poll failed on port " + std::to_string(port_id.port), __func__);
       break;
     }
 
     for (size_t i = 0; i < fds.size(); ++i) {
       if (fds[i].revents & POLLIN) {
-        if (fds[i].fd == server_fd) {
-          // Accept new client connection
+        if (fds[i].fd == port_id.sfd) {
           struct sockaddr_in client_address;
           socklen_t client_len = sizeof(client_address);
-          int client_socket = accept(server_fd, (struct sockaddr*)&client_address, &client_len);
+          int client_socket = accept(port_id.sfd, (struct sockaddr*)&client_address, &client_len);
           if (client_socket < 0) {
-            logger::error("Failed to accept client connection on port " + std::to_string(port), __func__);
+            logger::error("Failed to accept client connection on port " + std::to_string(port_id.port), __func__);
             continue;
           }
 
-          // Set client socket to non-blocking mode
           if (fcntl(client_socket, F_SETFL, O_NONBLOCK) < 0) {
             logger::error("Failed to set non-blocking mode for client socket", __func__);
             close(client_socket);
             continue;
           }
 
-          logger::info("Accepted client connection on port " + std::to_string(port), __func__);
-
-          // Add client socket to poll list
           pollfd client_poll_fd = {client_socket, POLLIN, 0};
           fds.push_back(client_poll_fd);
         } else {
-          // Handle client request
-          process_request(fds[i].fd);
-
-          // Remove client socket from poll list
-          close(fds[i].fd);
+          std::thread(&ApiHandler::process_request, this, fds[i].fd).detach();
           fds.erase(fds.begin() + i);
           --i;
         }
       }
     }
   }
-
-  close(server_fd);
+  close(port_id.sfd);
 }
-
 
 void ApiHandler::process_request(int client_socket) {
   char buffer[1024];
@@ -139,20 +110,46 @@ void ApiHandler::process_request(int client_socket) {
   ssize_t bytes_read = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
   if (bytes_read <= 0) {
     logger::error("Failed to read from client socket", __func__);
+    close(client_socket);
     return;
   }
 
-  logger::info("Received request:\n" + std::string(buffer), __func__);
+  std::string request(buffer);
+  logger::info("Received request:\n" + request, __func__);
 
-  // Send a basic HTTP response
-  std::string response = "HTTP/1.1 200 OK\r\n"
-    "Content-Type: text/plain\r\n"
-    "Content-Length: 12\r\n"
-    "\r\n"
-    "Hello World!";
+  std::string response;
+  if (custom_request_handler_) {
+    response = custom_request_handler_(request);
+  } else {
+    response = process_http_request(request);
+  }
+
   if (send(client_socket, response.c_str(), response.size(), 0) < 0) {
     logger::error("Failed to send response to client", __func__);
-  } else {
-    logger::info("Sent response to client", __func__);
   }
+
+  close(client_socket);
+}
+
+std::string ApiHandler::process_http_request(const std::string& request) {
+  http_pck pck_response(200);
+  pck_response.set_content("Content-Type", "text/plain");
+  pck_response.set_body("Hello World!");
+  return pck_response.export_packet();
+}
+
+void ApiHandler::set_request_handler(RequestHandler handler) {
+  custom_request_handler_ = handler;
+}
+
+void ApiHandler::run() {
+  for (self_port& id_port : id_ports)
+    threads_.emplace_back(&ApiHandler::listen_port, this, std::ref(id_port));
+  for (auto& thread : threads_)
+    if (thread.joinable()) thread.join();
+}
+
+void ApiHandler::process_client_data(int client_socket, const std::string& data) {
+  // Custom processing of client data can be implemented here
+  logger::info("Processing client data: " + data, __func__);
 }

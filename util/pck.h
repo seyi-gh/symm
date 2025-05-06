@@ -63,9 +63,10 @@ public:
   }
 
   std::string export_packet() {
-    std::string response = status_line + content_type + export_headers() + bl;
-    if (!content_data.empty())
-      response += content_data + bl;
+    add_header("Content-Length", std::to_string(content_data.size()));
+    std::string response = status_line + content_type + export_headers() + bl + content_data;
+    if (response.back() != '\n')
+      response += bl;
     return response;
   }
 };

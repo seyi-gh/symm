@@ -5,12 +5,12 @@
 
 int main() {
   int port = 9000;
-  // WebSocketServer server(port);
+  WebSocketServer server(port);
 
-  ApiHandler apiHandler({3000, 5000});
+  //ApiHandler apiHandler({3000, 5000});
 
-  apiHandler.run();
-  // server.run();
+  //apiHandler.run();
+  server.run();
 
   return 0;
 }
