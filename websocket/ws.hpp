@@ -22,6 +22,9 @@ public:
   WebSocketServer(int port = -1, int max_threads = 4);
   virtual ~WebSocketServer();
 
+  std::unordered_set<int> connected_clients_;
+  std::mutex connected_clients_mutex_;
+
   void run(); // Start the server
   void stop(); // Stop the server
   void set_message_handler(MessageHandler handler); // Set custom message handler
@@ -31,14 +34,9 @@ public:
 
   bool is_socket_closed(int client_socket); // Check if a socket is closed
 
-protected:
-  virtual bool validate_handshake(const std::string& request); // Override for custom handshake validation
-  virtual void on_message(int client_socket, const std::string& message); // Override for custom message handling
-  virtual std::string process_data(const std::string& data); // Process data before sending
-  std::unordered_set<int> closed_sockets_; 
-  std::mutex close_sockets_mutex_;
+  void broadcast(const std::string& message);
+  std::string receive_response();
 
-private:
   int port_;
   int server_fd_;
   int epoll_fd_;
@@ -64,4 +62,20 @@ private:
   std::string sanitize_utf8(const std::string& str); // Sanitize UTF-8 strings
   std::string compute_accept_key(const std::string& sec_websocket_key);
   std::string extract_header(const std::string& request, const std::string& header_name);
+
+  virtual bool validate_handshake(const std::string& request); // Override for custom handshake validation
+  virtual void on_message(int client_socket, const std::string& message); // Override for custom message handling
+  virtual std::string process_data(const std::string& data); // Process data before sending
+  std::unordered_set<int> closed_sockets_; 
+  std::mutex close_sockets_mutex_;
+
+  std::mutex response_mutex_;
+  std::condition_variable response_cv_;
+  std::queue<std::string> response_queue_;
+
+protected:
+
+
+private:
+
 };

@@ -69,6 +69,16 @@ public:
       response += bl;
     return response;
   }
+
+  pck& operator=(const pck& other) {
+    if (this != &other) {
+      status_line = other.status_line;
+      content_type = other.content_type;
+      content_data = other.content_data;
+      headers = other.headers;
+    }
+    return *this;
+  }
 };
 
 

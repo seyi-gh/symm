@@ -1,8 +1,9 @@
 .vscode
 logs/*.txt
-test.suite/node_modules
-test.suite/package-lock.json
+notes/
+*/node_modules
+*/package-lock.json
 *.o
-main.o
+./main.o
 symm
 .idea.txt

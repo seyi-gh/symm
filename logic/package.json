@@ -7,13 +7,17 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "ws-5000": "node t.ws.js"
+    "client": "npx tsx client.ts",
+    "portable": "npx tsx portable.ts",
+    "app": "npx tsx app.ts"
   },
   "devDependencies": {
     "axios": "^1.8.4",
     "express": "^5.1.0",
-    "prompt-sync": "^4.2.0",
     "ws": "^8.18.1"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "typescript": "^5.8.3"
   }
 }

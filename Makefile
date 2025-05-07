@@ -3,9 +3,8 @@ CXXFLASGS = -Wall -std=c++17
 LDFLAGS = -lssl -lcrypto -pthread
 
 SRC = main.cpp \
-			conn/handler.cpp \
-			websocket/client.cpp \
-			websocket/server.cpp \
+			./conn/proxy.cpp \
+			./websocket/ws.cpp 
 
 OBJ = ${SRC:.cpp=.o}
 

@@ -1,4 +1,4 @@
-#include "server.hpp"
+#include "ws.hpp"
 #include "../util/logger.h"
 #include "../util/pck.h"
 
@@ -7,6 +7,7 @@
 #include <string>
 #include <sstream>
 #include <cstring>
+#include <unordered_set>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/epoll.h>
@@ -142,6 +143,12 @@ void WebSocketServer::handle_events() {
             client_event.events = EPOLLIN;
             client_event.data.fd = client_socket;
             epoll_ctl(epoll_fd_, EPOLL_CTL_ADD, client_socket, &client_event);
+
+            // Add to connected clients
+            {
+              std::lock_guard<std::mutex> lock(connected_clients_mutex_);
+              connected_clients_.insert(client_socket);
+            }
           } else {
             close(client_socket);
           }
@@ -346,6 +353,11 @@ void WebSocketServer::close_connection(int client_socket) {
     close(client_socket);
     logger::info("Closed connection (fd: " + std::to_string(client_socket) + ")", __func__);
   }
+
+  {
+    std::lock_guard<std::mutex> lock(connected_clients_mutex_);
+    connected_clients_.erase(client_socket);
+  }
 }
 
 
@@ -406,8 +418,15 @@ std::string WebSocketServer::process_data(const std::string& data) {
 
 void WebSocketServer::on_message(int client_socket, const std::string& message) {
   //logger::info("on_message called for fd: " + std::to_string(client_socket) + " with message: " + message, __func__);
+  /*
   std::string response = "Echo: " + message;
   handle_client_write(client_socket, response);
+  */
+  {
+    std::lock_guard<std::mutex> lock(response_mutex_);
+    response_queue_.push(message);
+  }
+  response_cv_.notify_one();
 }
 
 bool WebSocketServer::validate_handshake(const std::string& request) {
@@ -514,4 +533,27 @@ std::string WebSocketServer::compute_accept_key(const std::string& sec_websocket
   BIO_free_all(bio);
 
   return sec_websocket_accept;
+}
+
+void WebSocketServer::broadcast(const std::string& message) {
+  logger::info("Broadcasting message to all clients", __func__);
+  std::unordered_set<int> clients_copy;
+  {
+    std::lock_guard<std::mutex> lock(connected_clients_mutex_);
+    clients_copy = connected_clients_;
+  }
+  logger::info("Number of clients to broadcast: " + std::to_string(clients_copy.size()), __func__);
+  for (int client_socket : clients_copy) {
+    logger::info("Broadcasting message to client socket: " + std::to_string(client_socket), __func__);
+    handle_client_write(client_socket, message);
+  }
+}
+
+std::string WebSocketServer::receive_response() {
+  logger::info("Waiting for response from WebSocket client", __func__);
+  std::unique_lock<std::mutex> lock(response_mutex_);
+  response_cv_.wait(lock, [&]{ return !response_queue_.empty(); });
+  std::string msg = response_queue_.front();
+  response_queue_.pop();
+  return msg;
 }
