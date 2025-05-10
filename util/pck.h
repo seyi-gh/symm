@@ -4,36 +4,18 @@
 #include <string>
 #include <vector>
 
-/*
-Packet string formated as HTTP response
-- Helper for exporting HTTP responses
-- Break line added
-*/
-class pck {
-protected:
-  const std::string bl = "\r\n";
-  virtual std::string format_status(short int status_code) const {
-    return "HTTP/1.1 " + std::to_string(status_code) + " Unknown\r\n";
-  }
-  std::string header_format(std::string id, std::string value) const {
-    return id + ": " + value + bl;
-  }
-
+class PckParent {
 public:
   std::string status_line;
   std::string content_type;
   std::string content_data;
   std::vector<std::string> headers;
 
-  pck(short int status_code=-1)
-    :status_line(""), content_type(""), content_data("") {
-    if (status_code != -1) set_status(status_code);
-  }
-  virtual ~pck() = default;
+  explicit PckParent() {};
 
   // Break line added
   void add_header(std::string header) {
-    headers.push_back(header + bl);
+    headers.push_back(header + breakline);
   }
   // Break line added
   void add_header(std::string header, std::string value) {
@@ -49,7 +31,7 @@ public:
   }
   // Break line added
   void set_status(std::string status) {
-    status_line = status + bl;
+    status_line = status + breakline;
   }
   void set_body(std::string body) {
     content_data = body;
@@ -64,13 +46,13 @@ public:
 
   std::string export_packet() {
     add_header("Content-Length", std::to_string(content_data.size()));
-    std::string response = status_line + content_type + export_headers() + bl + content_data;
+    std::string response = status_line + content_type + export_headers() + breakline + content_data;
     if (response.back() != '\n')
-      response += bl;
+      response += breakline;
     return response;
   }
 
-  pck& operator=(const pck& other) {
+  PckParent& operator=(const PckParent& other) {
     if (this != &other) {
       status_line = other.status_line;
       content_type = other.content_type;
@@ -79,17 +61,28 @@ public:
     }
     return *this;
   }
+
+protected:
+  const std::string breakline = "\r\n";
+  virtual std::string format_status(short int status_code) const { return ""; };
+  std::string header_format(std::string id, std::string value) const {
+    return id + ": " + value + breakline;
+  }
 };
 
-
-class ws_pck : public pck {
+/*
+#### Helper class for WebSocket responses
+- Only coded to function in HTTP/1.1
+- When exported discard length of content data
+*/
+class pck_WebSocket: public PckParent {
 public:
-  ws_pck(short int status_code=-1)
-    :pck(status_code) {
-    if (status_code != -1) set_status(status_code);
+  pck_WebSocket(short int status_code = -1): PckParent() {
+    set_status(status_code);
   }
 
-  std::string format_status(short int status_code) const {
+  std::string format_status(short int status_code = -1) const {
+    if (status_code == -1) status_code = 500;
     if (status_code == 101)
       return "HTTP/1.1 101 Switching Protocols\r\n";
     else if (status_code == 400)
@@ -108,6 +101,7 @@ public:
   }
 };
 
+/*
 class http_pck : public pck {
 public:
   http_pck(short int status_code=-1)
@@ -131,3 +125,4 @@ public:
     return "HTTP/1.1 500 Internal Server Error\r\n";
   }
 };
+*/

@@ -1,9 +1,10 @@
+# Project defaults
 .vscode
-logs/*.txt
-notes/
+
+# Project testing files with ts
 */node_modules
 */package-lock.json
-*.o
-./main.o
+
+# Trash files
 symm
-.idea.txt
+.temp.context.txt

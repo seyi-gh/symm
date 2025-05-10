@@ -1,27 +1,14 @@
-#include "websocket/ws.hpp"
-#include "conn/proxy.hpp"
-#include "util/logger.h"
+//#include "websocket/ws.hpp"
+//#include "conn/proxy.hpp"
+//#include "util/logger.h"
+
+#include "util/pck.h"
+
 #include <iostream>
 #include <thread>
 
+/*
 int main() {
-  /*
-  ApiProxy proxy({3000, 5000});
-  proxy.set_data_handler([&](const std::string& request, int client_fd) -> http_pck {
-    //logger::info(proxy.response_get_host(request), __func__);
-    //logger::info(proxy.response_get_path(request), __func__);
-    logger::info("Client socket: " + std::to_string(client_fd), "lambda");
-
-    http_pck response;
-    response.set_status(200);
-    response.set_content("Content-Type", "text/plain");
-    response.set_body("Hello response from server!");
-    // Set other fields of http_pck as needed
-    return response;
-  });
-  proxy.run();
-  */
-
   ApiProxy proxy({3000, 5000});
   WebSocketServer ws_server(9000, 4);
 
@@ -52,4 +39,13 @@ int main() {
   proxy.run();
   ws_thread.join();
   return 0;
+}
+*/
+
+int main() {
+  pck_WebSocket packet(200);
+
+  packet.add_header("Upgrade", "websocket");
+
+  std::cout << packet.export_packet() << std::endl;
 }

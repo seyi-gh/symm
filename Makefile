@@ -2,12 +2,9 @@ CXX = g++
 CXXFLASGS = -Wall -std=c++17
 LDFLAGS = -lssl -lcrypto -pthread
 
-SRC = main.cpp \
-			./conn/proxy.cpp \
-			./websocket/ws.cpp 
-
+#SRC = $(ls *.cpp */*.cpp)
+SRC = main.cpp
 OBJ = ${SRC:.cpp=.o}
-
 BIN = symm
 
 all: ${BIN}
