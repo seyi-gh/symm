@@ -2,7 +2,9 @@
 //#include "conn/proxy.hpp"
 //#include "util/logger.h"
 
-#include "util/pck.h"
+//#include "util/pck.h"
+
+
 
 #include <iostream>
 #include <thread>
@@ -42,10 +44,28 @@ int main() {
 }
 */
 
+
+/*
 int main() {
   pck_WebSocket packet(200);
-
+  
   packet.add_header("Upgrade", "websocket");
-
+  
   std::cout << packet.export_packet() << std::endl;
+  }*/
+
+
+#include "conn/proxy.hpp"
+
+int main() {
+  ApiProxy proxy({3000, 5000});
+  proxy.set_data_handler([](const std::string& request, int client_fd) -> http_pck {
+    http_pck response;
+    response.set_status(200);
+    response.set_content("Content-Type", "text/plain");
+    response.set_body("Received: " + request);
+    std::cout << "Client socket: " << client_fd << std::endl;
+    return response;
+  });
+  proxy.run();
 }

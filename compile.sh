@@ -6,7 +6,7 @@ PORT=9000
 
 #set -x
 
-sh ./exec/k.port.sh
+sh ./exec/kill_port.sh
 # sh ./exec/k.docker.sh
 rm -r ./*.o ./symm ./*/*.o
 files_found="$(find . -name "*.o")"

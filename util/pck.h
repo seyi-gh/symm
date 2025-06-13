@@ -101,11 +101,11 @@ public:
   }
 };
 
-/*
-class http_pck : public pck {
+
+class http_pck : public PckParent {
 public:
   http_pck(short int status_code=-1)
-    :pck(status_code) {
+    :PckParent() {
     if (status_code != -1) set_status(status_code);
   }
 
@@ -125,4 +125,3 @@ public:
     return "HTTP/1.1 500 Internal Server Error\r\n";
   }
 };
-*/
